@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Safety Ops Dashboard — ผลผลิตที่สำคัญ</title>
+
+  <!-- Fonts (optional) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      /* Modern clean palette */
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface-2: #fbfbfe;
+      --text: #101828;
+      --muted: #667085;
+      --border: #e6e8ef;
+      --shadow: 0 10px 25px rgba(16, 24, 40, 0.08);
+
+      --accent: #4f46e5;      /* main */
+      --accent-2: #06b6d4;    /* secondary */
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+
+      --radius: 16px;
+    }
+
+    *{ box-sizing: border-box; }
+    body{
+      margin: 0;
+      font-family: "Noto Sans Thai", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(900px 450px at 15% 0%, rgba(79,70,229,.10), transparent 55%),
+                  radial-gradient(900px 450px at 85% 0%, rgba(6,182,212,.10), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 22px 16px 44px;
+    }
+
+    /* Header */
+    .topbar{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .title-wrap{
+      display: grid;
+      gap: 6px;
+    }
+
+    .title{
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      margin: 0;
+    }
+
+    .subtitle{
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chips{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .chip{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.8);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      box-shadow: 0 4px 12px rgba(16,24,40,0.04);
+      white-space: nowrap;
+    }
+
+    .dot{
+      width: 8px; height: 8px; border-radius: 999px; background: var(--accent);
+      display: inline-block;
+    }
+
+    /* KPI Row */
+    .kpis{
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+      margin: 14px 0 14px;
+    }
+    .kpi{
+      grid-column: span 3;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 14px 12px;
+      min-height: 84px;
+      display: grid;
+      gap: 8px;
+    }
+    .kpi .label{
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .kpi .value{
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .kpi .hint{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .badge{
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--muted);
+    }
+    .badge.ok{ border-color: rgba(22,163,74,.25); color: var(--ok); background: rgba(22,163,74,.08); }
+    .badge.warn{ border-color: rgba(245,158,11,.25); color: var(--warn); background: rgba(245,158,11,.10); }
+    .badge.bad{ border-color: rgba(239,68,68,.25); color: var(--bad); background: rgba(239,68,68,.10); }
+
+    /* Charts */
+    .grid{
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .card{
+      grid-column: span 6;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header{
+      padding: 14px 14px 8px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(79,70,229,.06), rgba(255,255,255,0));
+    }
+
+    .card-title{
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .card-sub{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .card-body{
+      padding: 12px 14px 14px;
+    }
+
+    .chart-wrap{
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    canvas{
+      width: 100% !important;
+      height: 300px !important;
+    }
+
+    /* Footer */
+    .footer{
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 980px){
+      .kpi{ grid-column: span 6; }
+      .card{ grid-column: span 12; }
+      canvas{ height: 280px !important; }
+    }
+    @media (max-width: 520px){
+      .kpi{ grid-column: span 12; }
+      canvas{ height: 260px !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1 class="title">Safety Ops Dashboard — ผลผลิตที่สำคัญ</h1>
+        <p class="subtitle">
+          สรุปภาพรวมจากผลผลิต: รายงานตรวจสอบประจำปี • คู่มือความปลอดภัย • ฐานข้อมูลอุบัติเหตุ/near-miss
+        </p>
+      </div>
+
+      <div class="chips">
+        <div class="chip"><span class="dot"></span><b>Site:</b> S99</div>
+        <div class="chip"><b>Workspace:</b> การกำกับดูแลฯ</div>
+        <div class="chip"><b>ข้อมูล:</b> ตัวอย่าง (Mock)</div>
+      </div>
+    </div>
+
+    <!-- KPI SUMMARY -->
+    <section class="kpis">
+      <div class="kpi">
+        <div class="label">
+          <span>จำนวนการตรวจสอบ (ทั้งปี)</span>
+          <span class="badge" id="kpiInsBadge">—</span>
+        </div>
+        <div class="value" id="kpiInspections">—</div>
+        <div class="hint">อิงจาก “รายงานตรวจสอบประจำปี”</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">
+          <span>Compliance ล่าสุด</span>
+          <span class="badge" id="kpiComBadge">—</span>
+        </div>
+        <div class="value" id="kpiCompliance">—</div>
+        <div class="hint">เป้าหมายตัวอย่าง: 95%</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">
+          <span>Response Time เฉลี่ย (ล่าสุด)</span>
+          <span class="badge" id="kpiResBadge">—</span>
+        </div>
+        <div class="value" id="kpiResponse">—</div>
+        <div class="hint">วัดความเร็วในการตอบสนองเหตุฉุกเฉิน</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">
+          <span>Accidents ล่าสุด</span>
+          <span class="badge" id="kpiAccBadge">—</span>
+        </div>
+        <div class="value" id="kpiAccidents">—</div>
+        <div class="hint">เทียบ near-miss เพื่อดูคุณภาพการรายงาน</div>
+      </div>
+    </section>
+
+    <!-- CHART GRID -->
+    <section class="grid">
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">1) ปริมาณการตรวจสอบ (รายไตรมาส)</h2>
+          <p class="card-sub">จำนวนครั้งการตรวจสถานประกอบการ/สถานที่และอุปกรณ์</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="c1"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">2) อัตราการปฏิบัติตามมาตรฐาน (%)</h2>
+          <p class="card-sub">ผลจริงรายเดือน เทียบกับเป้าหมาย 95%</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="c2"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">3) เวลาเฉลี่ยในการตอบสนองเหตุฉุกเฉิน (นาที)</h2>
+          <p class="card-sub">ยิ่งต่ำยิ่งดี — ใช้ชี้ความพร้อมในการจัดการเหตุการณ์</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="c3"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">4) การใช้งานคู่มือ/แนวปฏิบัติ</h2>
+          <p class="card-sub">ตัวอย่าง: ดาวน์โหลด + เข้าชม (รายเดือน)</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="c4"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">5) อุบัติเหตุจำแนกตามประเภทการบาดเจ็บ</h2>
+          <p class="card-sub">สรุปจากฐานข้อมูลอุบัติเหตุเพื่อใช้ทำมาตรการเชิงป้องกัน</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="c5"></canvas></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">6) แนวโน้ม Accidents vs Near-miss</h2>
+          <p class="card-sub">ช่วยเห็นผลลัพธ์มาตรการ + คุณภาพการรายงานเหตุการณ์</p>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="c6"></canvas></div>
+        </div>
+      </article>
+    </section>
+
+    <div class="footer">© 2025 DT Performance System (ตัวอย่าง) — แก้ข้อมูลได้ในส่วน SAMPLE DATA</div>
+  </div>
+
+  <script>
+    // ====== SAMPLE DATA (แก้ตัวเลขได้ตรงนี้) ======
+    const quarters = ["Q1","Q2","Q3","Q4"];
+    const inspections = [120, 145, 132, 160];
+
+    const months = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+    const complianceActual = [86, 88, 90, 92, 93, 95, 95, 96, 96, 97, 97, 97];
+    const complianceTarget = new Array(12).fill(95);
+
+    const responseAvgMin = [18, 17, 16, 15, 14, 14, 13, 13, 12, 12, 11, 11];
+
+    const manualDownloads = [420, 510, 560, 610, 680, 720, 760, 800, 820, 860, 910, 980];
+    const manualViews = [2200, 2500, 2700, 2900, 3200, 3400, 3600, 3900, 4100, 4400, 4700, 5200];
+
+    const injuryTypes = ["ข้อเท้าแพลง","กล้ามเนื้อฉีก","หกล้ม/กระแทก","บาดแผล","ลมแดด/อ่อนเพลีย","อื่นๆ"];
+    const injuryCounts = [38, 26, 31, 14, 9, 12];
+
+    const accidents = [22, 20, 18, 17, 16, 15, 14, 14, 13, 12, 12, 11];
+    const nearMiss  = [35, 38, 42, 44, 48, 52, 55, 58, 60, 62, 66, 70];
+
+    // ====== KPI CALC ======
+    const sum = (arr) => arr.reduce((a,b)=>a+b,0);
+    const last = (arr) => arr[arr.length - 1];
+
+    const totalIns = sum(inspections);
+    const lastCom = last(complianceActual);
+    const lastRes = last(responseAvgMin);
+    const lastAcc = last(accidents);
+
+    document.getElementById("kpiInspections").textContent = totalIns.toLocaleString("th-TH") + " ครั้ง";
+    document.getElementById("kpiCompliance").textContent  = lastCom.toFixed(0) + "%";
+    document.getElementById("kpiResponse").textContent    = lastRes.toFixed(0) + " นาที";
+    document.getElementById("kpiAccidents").textContent   = lastAcc.toFixed(0) + " ครั้ง";
+
+    // KPI badges (simple thresholds)
+    const setBadge = (id, text, cls) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = "badge " + (cls || "");
+    };
+
+    setBadge("kpiInsBadge", "YTD", "");
+    setBadge("kpiComBadge", lastCom >= 95 ? "On track" : "Need action", lastCom >= 95 ? "ok" : "warn");
+    setBadge("kpiResBadge", lastRes <= 12 ? "Good" : "Watch", lastRes <= 12 ? "ok" : "warn");
+    setBadge("kpiAccBadge", lastAcc <= 12 ? "Improving" : "Watch", lastAcc <= 12 ? "ok" : "warn");
+
+    // ====== CHART STYLE (clean + readable) ======
+    const css = getComputedStyle(document.documentElement);
+    const ACCENT  = css.getPropertyValue("--accent").trim();
+    const ACCENT2 = css.getPropertyValue("--accent-2").trim();
+    const GRID    = "rgba(16,24,40,0.08)";
+    const TICK    = "rgba(16,24,40,0.65)";
+
+    Chart.defaults.font.family = '"Noto Sans Thai", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+    Chart.defaults.color = TICK;
+
+    const commonPlugins = {
+      legend: {
+        labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 }
+      },
+      tooltip: {
+        backgroundColor: "rgba(16,24,40,0.95)",
+        titleColor: "#fff",
+        bodyColor: "rgba(255,255,255,0.9)",
+        borderColor: "rgba(255,255,255,0.08)",
+        borderWidth: 1,
+        padding: 10
+      }
+    };
+
+    const commonScales = {
+      x: { grid: { color: GRID }, ticks: { color: TICK } },
+      y: { grid: { color: GRID }, ticks: { color: TICK } }
+    };
+
+    // =========================
+    // Plugin: Center Text (for Doughnut)
+    // =========================
+    const centerTextPlugin = {
+      id: "centerText",
+      afterDraw(chart, args, pluginOptions) {
+        const meta = chart.getDatasetMeta(0);
+        if (!meta?.data?.length) return;
+
+        const { ctx } = chart;
+        const x = meta.data[0].x;
+        const y = meta.data[0].y;
+
+        const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+        const title = pluginOptions?.title ?? "รวม";
+        const value = pluginOptions?.value ?? `${total.toLocaleString("th-TH")} เคส`;
+
+        ctx.save();
+        // ctx.display = "none";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "rgba(16,24,40,0.55)";
+        ctx.font = "600 12px Noto Sans Thai, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        // ctx.fillText(title, x, y - 10);
+
+        ctx.fillStyle = "rgba(16,24,40,0.92)";
+        ctx.font = "700 18px Noto Sans Thai, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        // ctx.fillText(value, x, y + 10);
+
+        ctx.restore();
+      }
+    };
+    Chart.register(centerTextPlugin);
+
+    // 1) Inspections per quarter
+    new Chart(document.getElementById("c1"), {
+      type: "bar",
+      data: {
+        labels: quarters,
+        datasets: [{
+          label: "จำนวนการตรวจสอบ",
+          data: inspections,
+          backgroundColor: "rgba(79,70,229,0.20)",
+          borderColor: ACCENT,
+          borderWidth: 2,
+          borderRadius: 10
+        }]
+      },
+      options: { plugins: commonPlugins, scales: commonScales }
+    });
+
+    // 2) Compliance
+    new Chart(document.getElementById("c2"), {
+      type: "line",
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: "ผลจริง (%)",
+            data: complianceActual,
+            borderColor: ACCENT,
+            backgroundColor: "rgba(79,70,229,0.12)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            borderWidth: 2
+          },
+          {
+            label: "เป้าหมาย (%)",
+            data: complianceTarget,
+            borderColor: "rgba(16,24,40,0.45)",
+            borderDash: [6,6],
+            pointRadius: 0,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        plugins: commonPlugins,
+        scales: {
+          ...commonScales,
+          y: { ...commonScales.y, suggestedMin: 75, suggestedMax: 100 }
+        }
+      }
+    });
+
+    // 3) Response time
+    new Chart(document.getElementById("c3"), {
+      type: "line",
+      data: {
+        labels: months,
+        datasets: [{
+          label: "เวลาเฉลี่ย (นาที)",
+          data: responseAvgMin,
+          borderColor: ACCENT2,
+          backgroundColor: "rgba(6,182,212,0.10)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        plugins: commonPlugins,
+        scales: { ...commonScales, y: { ...commonScales.y, suggestedMin: 8, suggestedMax: 22 } }
+      }
+    });
+
+    // 4) Manual usage (bar + line)
+    new Chart(document.getElementById("c4"), {
+      data: {
+        labels: months,
+        datasets: [
+          {
+            type: "bar",
+            label: "ดาวน์โหลด (ครั้ง)",
+            data: manualDownloads,
+            backgroundColor: "rgba(79,70,229,0.18)",
+            borderColor: ACCENT,
+            borderWidth: 2,
+            borderRadius: 10
+          },
+          {
+            type: "line",
+            label: "เข้าชม (ครั้ง)",
+            data: manualViews,
+            borderColor: ACCENT2,
+            backgroundColor: "rgba(6,182,212,0.10)",
+            tension: 0.35,
+            pointRadius: 2,
+            borderWidth: 2,
+            yAxisID: "y2"
+          }
+        ]
+      },
+      options: {
+        plugins: commonPlugins,
+        scales: {
+          x: commonScales.x,
+          y: { ...commonScales.y, title: { display: true, text: "ดาวน์โหลด" } },
+          y2: {
+            position: "right",
+            grid: { drawOnChartArea: false },
+            ticks: { color: TICK },
+            title: { display: true, text: "เข้าชม" }
+          }
+        }
+      }
+    });
+
+    // 5) Injury types (Doughnut — upgraded)
+    const donutColors = [
+      "#4F46E5", // indigo
+      "#06B6D4", // cyan
+      "#22C55E", // green
+      "#F59E0B", // amber
+      "#EF4444", // red
+      "#8B5CF6"  // violet
+    ];
+
+    new Chart(document.getElementById("c5"), {
+      type: "doughnut",
+      data: {
+        labels: injuryTypes,
+        datasets: [{
+          label: "จำนวนเคส",
+          data: injuryCounts,
+          backgroundColor: donutColors,
+          borderColor: "rgba(255,255,255,0.95)",
+          borderWidth: 2,
+          hoverOffset: 10,
+          spacing: 2,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "68%",
+        plugins: {
+          ...commonPlugins,
+          centerText: {
+            title: "รวมทั้งหมด"
+            // value: "120 เคส" // (ถ้าต้องการกำหนดเอง)
+          },
+          legend: {
+            position: "bottom",
+            labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10, padding: 14 }
+          },
+          tooltip: {
+            ...commonPlugins.tooltip,
+            callbacks: {
+              label: (ctx) => {
+                const value = ctx.raw ?? 0;
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = total ? (value / total) * 100 : 0;
+                return ` ${ctx.label}: ${value.toLocaleString("th-TH")} เคส (${pct.toFixed(1)}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 6) Accident vs Near-miss
+    new Chart(document.getElementById("c6"), {
+      type: "line",
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: "Accidents (ครั้ง)",
+            data: accidents,
+            borderColor: ACCENT,
+            backgroundColor: "rgba(79,70,229,0.08)",
+            tension: 0.35,
+            pointRadius: 3,
+            borderWidth: 2
+          },
+          {
+            label: "Near-miss (ครั้ง)",
+            data: nearMiss,
+            borderColor: ACCENT2,
+            backgroundColor: "rgba(6,182,212,0.08)",
+            tension: 0.35,
+            pointRadius: 3,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: { plugins: commonPlugins, scales: commonScales }
+    });
+  </script>
+</body>
+</html>
